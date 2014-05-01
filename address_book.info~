@@ -1,0 +1,4 @@
+name = "Address Book"
+description = "Creates address book page on your site"
+
+core = 7.x

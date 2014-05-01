@@ -1,0 +1,129 @@
+<?php
+/**
+ * @file
+ * Install file of module.
+ */
+
+/**
+* Implements hook_install().
+*/
+
+function address_book_install() {
+ 
+    $new_vocab = ((object) array(
+    'name' => 'Contact category',
+    'description' => 'Vocabulary created by module adress book',
+    'machine_name' => 'contact_category',
+  ));
+  taxonomy_vocabulary_save($new_vocab);
+
+$vocab = taxonomy_vocabulary_machine_name_load('contact_category');
+  
+$fam = (object) array(
+   'name' => 'Family',
+   'description' => 'category for family contacts',
+   'vid' => $vocab->vid,
+);
+  
+$fr = (object) array(
+   'name' => 'Friends',
+   'description' => 'category for friends contacts',
+   'vid' => $vocab->vid,
+);
+
+$wr = (object) array(
+   'name' => 'Coworkers',
+   'description' => 'category for cowokers contacts',
+   'vid' => $vocab->vid,
+);
+
+taxonomy_term_save($fam); 
+taxonomy_term_save($fr); 
+taxonomy_term_save($wr); 
+
+  $style = image_style_save(array('name' => 'contact_img'));
+  $effect = array(
+    'name' => 'image_scale',
+    'data' => array(
+      'width' => 150,
+      'height' => 150,
+      'upscale' => TRUE,
+    ),
+    'isid' => $style['isid'],
+  );
+  image_effect_save($effect);
+
+}
+
+
+function address_book_schema() {
+  return array(
+    'contact' => array(
+      'description' => t('This table stores address bokk module data'),
+      'fields' => array(
+        'contact_id' => array(
+          'description' => 'Primary key',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+	  'not null' => TRUE,
+        ),
+        'first_name' => array(
+          'description' => 'addres book value',
+          'type' => 'varchar',
+          'length' => 60,
+ 'not null' => TRUE,
+        ),
+ 'last_name' => array(
+          'description' => 'addres book value',
+          'type' => 'varchar',
+          'length' => 60,
+ 'not null' => TRUE,
+        ),
+ 'email' => array(
+          'description' => 'addres book value',
+          'type' => 'varchar',
+          'length' => 60,
+        ),
+ 'phone' => array(
+          'description' => 'addres book value',
+          'type' => 'varchar',
+          'length' => 60,
+        ),
+ 'notes' => array(
+          'description' => 'addres book value',
+          'type' => 'varchar',
+          'length' => 350,
+        ),
+'birthday' => array(
+        'type' => 'datetime', 
+        'mysql_type' => 'DATETIME',
+        'not null' => TRUE,
+    ),
+ "category_id" => array(
+            'type' => 'int',
+            'unsigned' => TRUE,
+        ),
+       "user_id" => array(
+            'type' => 'int',
+            'unsigned' => TRUE,
+        ),
+ "img_id" => array(
+            'type' => 'int',
+            'unsigned' => TRUE,
+        ),
+      ),
+
+      'primary key' => array('contact_id'),
+    ),
+  );
+}
+/**
+* Implements hook_uninstall().
+*/
+function address_book_uninstall() {
+  
+	$vocab = taxonomy_vocabulary_machine_name_load('contact_category');
+  	taxonomy_vocabulary_delete($vocab->vid);
+} 
+
+

@@ -1,0 +1,321 @@
+<?php
+
+/**
+ * @file
+ * This file provides basic hooks imlementations.
+ */
+
+/**
+ * Implements hook_menu().
+ * 
+ * @return array
+ */
+
+function address_book_menu() {
+return array(
+
+
+'address-book/%/contact' => array(
+      'title' => 'First edu sample page',
+      'title callback' => 'function_title_callback',
+      'title arguments' => array(1),
+'type' =>  MENU_NORMAL_ITEM,
+      'page callback' => 'contact_page',
+      'access callback' => 'user_access',
+      'access arguments' => array('visit address book page'),
+      'page arguments' => array(1),
+
+    ),
+
+     'address-book' => array(
+     'title' => 'Address book',
+     'page callback' => 'drupal_get_form',
+     'page arguments'=>array('list_form'),
+     'access callback' => 'user_access',
+     'access arguments' => array('visit address book page'),
+     'type' => MENU_NORMAL_ITEM,
+     'menu_name' => 'main-menu',
+     'weight' => 20,
+       'file'=>'contactslist_form.php',
+   
+  ),
+
+    'address-book/list' => array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10
+  ),
+    'address-book/add' => array(
+    'title' => 'Add',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'address_book_form_page',
+     'access callback' => 'user_access',
+     'access arguments' => array('visit address book page'),
+    'weight' => -5,
+         'file'=>'Addform.php',
+  ),
+    'address-book/%/contact/list' => array(
+    'title' => 'List',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'list_page',
+    'access callback' => 'user_access',
+    'access arguments' => array('visit address book page'),
+    'weight' => -10
+  ),
+    'address-book/%/contact/add' => array(
+    'title' => 'Add',
+    'type' => MENU_LOCAL_TASK,
+'page callback' => 'add_page',
+    'access callback' => 'user_access',
+   'access arguments' => array('visit address book page'),
+        'file'=>'Addform.php',
+  
+  ),
+  'address-book/delete'=>array(
+    
+      'title' => t('Confirm'),
+    //'page callback' => 'delete_form',
+      'page callback' => 'drupal_get_form',
+       'type' => MENU_CALLBACK,
+      'page arguments'=>array('delete_confirm',2),
+      'access callback' => 'user_access',
+    'access arguments' => array('visit address book page'),
+      'file'=>'deleteconfirm_form.php',
+     ),
+    'address-book/%/edit' => array(
+        'title' => 'Edit contact',
+        'title callback' => 'edit_callback',
+        'title arguments' => array(1),
+        'type' => MENU_NORMAL_ITEM,
+        'page callback' => 'drupal_get_form',
+        'access callback' => 'user_access',
+        'access arguments' => array('visit address book page'),
+        'page arguments' => array('address_book_add_form',1),
+        'file'=>'Addform.php',
+
+    ),
+    'address-book/%/edit/list' => array(
+        'title' => 'List',
+        'type' => MENU_LOCAL_TASK,
+        'page callback' => 'list_page',
+        'access callback' => 'user_access',
+        'access arguments' => array('visit address book page'),
+        'weight' => -10
+    ),
+    'address-book/%/edit/add' => array(
+        'title' => 'Add',
+        'type' => MENU_LOCAL_TASK,
+        'page callback' => 'add_page',
+        'access callback' => 'user_access',
+        'access arguments' => array('visit address book page'),
+        'file'=>'Addform.php',
+
+    ),
+);
+
+}
+
+/**
+ *  contact_page.
+ * 
+ * 
+ */
+function contact_page($arg = "") {
+    $result = db_select('contact', 'c');
+    $result->join('file_managed', 'f', 'f.fid = c.img_id');
+    $result->join('taxonomy_term_data', 't', 't.tid = c.category_id');
+    $result->fields('c', array('contact_id','email', 'phone','birthday','notes','category_id'));
+    $result->fields('f', array('fid', 'uri'));
+    $result->fields('t', array('tid', 'name'));
+
+    $result->condition('contact_id', $arg,'=');
+    $result_rows = $result->execute()->fetchAll();
+   
+   if(count($result_rows)==0){
+      $result = db_select('contact', 'c');
+      $result->join('taxonomy_term_data', 't', 't.tid = c.category_id');
+      $result->fields('c', array('contact_id','email', 'phone','birthday','notes','category_id'));
+      $result->fields('t', array('tid', 'name'));
+      $result->condition('contact_id', $arg,'=');
+      $result_rows = $result->execute()->fetchAll();
+} else $ar['Photo']=$result_rows[0]->uri;
+ 
+
+     $ar['Note']=$result_rows[0]->notes;
+     $ar['Category']=$result_rows[0]->name;
+     if(strlen($result_rows[0]->email)>0)$ar['Email']=$result_rows[0]->email;
+     $ar['Phone']=$result_rows[0]->phone;
+     $date=new DateTime($result_rows[0]->birthday);
+     $res = $date->format('d/m/Y');
+     $ar['Birthday']=$res;
+
+
+     $output = array(
+    '#theme' => 'contactpage',
+    '#title' => t('ContactPage'),
+    '#items' => $ar,
+     );
+ return $output;
+}
+/**
+ * Implements hook_theme).
+ * 
+ * @return array
+ */
+function address_book_theme() {
+  return array(
+      'contactpage' => array(
+      'variables' => array(
+      'title' => array(),
+      'items' => array(),
+      ),
+      'path' => drupal_get_path('module', 'address_book') . '/templates',
+
+      'template' => 'contactpage',
+    ),
+   
+  );
+}
+/**
+ * Implements hook_permission().
+ * 
+ * @return array
+ */
+function address_book_permission() {
+    return array(
+    'visit address book page' => array(
+     'title' => t('Allow user to visit address book page'),
+     'description' => t('Address book page is created by Adress book module.'),
+    ),
+  );
+}
+/**
+ * title_calback.
+ * 
+ * @return title
+ */
+function function_title_callback($arg) {
+ 	$result = db_select('contact', 'c');
+ 	 $result->fields('c', array('contact_id', 'first_name','last_name'));
+   	$result->condition('contact_id', $arg,'=');
+  	$result_rows = $result->execute()->fetchAll();
+	if(isset($result_rows[0]))$title=$result_rows[0]->first_name.' ';
+	if($result_rows[0]->last_name!=null)$title.=$result_rows[0]->last_name;
+
+  return $title;
+}
+function edit_callback($arg) {
+    $result = db_select('contact', 'c');
+    $result->fields('c', array('contact_id', 'first_name','last_name'));
+    $result->condition('contact_id', $arg,'=');
+    $result_rows = $result->execute()->fetchAll();
+    if(isset($result_rows[0]))$title=$result_rows[0]->first_name.' ';
+    if($result_rows[0]->last_name!=null)$title.=$result_rows[0]->last_name;
+
+    return 'Edit contact '.$title;
+}
+
+function address_book_form_page() {
+  return drupal_get_form('address_book_add_form');
+}
+function address_book_edit_page($arg) {
+    return drupal_get_form('address_book_add_form',$arg);
+}
+function deleteform() {
+return drupal_get_form('delete_confirm');
+  //  else return drupal_get_form('delete_confirm',$arg);
+}
+
+function list_page() {
+    drupal_goto('address-book');
+   // return drupal_get_form('my_list_form');
+}
+function add_page() {
+    drupal_goto('address-book/add');
+    // return drupal_get_form('my_list_form');
+}
+
+/**
+ * form_alter
+ *
+ */
+function address_book_form_alter(&$form, &$form_state, $form_id) {
+
+    if($form_id=='address_book_add_form')$form['submit']['#validate'][] = 'addcontact_validate';
+
+}
+/**
+ * validation
+ *
+ */
+function addcontact_validate(&$form, &$form_state) {
+    if (strlen($form_state['values']['first_name'])==0)form_set_error('first_name', t('Please, enter first name'));
+    if (strlen($form_state['values']['last_name'])==0) {
+        form_set_error('last_name', t('Please, enter the last name'));
+    }
+}
+
+
+
+
+function address_book_block_info()
+{
+    return array(
+
+        'add_contact'=>array(
+            'info'=>t('Add contact link'),
+            'status' => 1,
+          //  'status' => TRUE,
+        //    'theme' => 'ls_newtheme',
+            'region' => 'highlighted',
+            'visibility' => BLOCK_VISIBILITY_LISTED,
+            'pages' => 'address-book',
+
+//'visibility' => 1,
+        ),
+    );
+}
+
+/**
+ * create block with add contact link
+ * @param string $delta
+ * @return array
+ */
+function address_book_block_view($delta='')
+{
+    $block=array();
+    switch($delta)
+    {case 'add_contact':
+        $block['subject']=t('Address book');
+        $block['content']=address_book_link();
+
+        break;
+    }
+    return $block;
+}
+
+function address_book_link()
+{$output='<a href="address-book/add">Add new contact</a>';return $output;
+}
+/***
+ * preprocess page
+ * set breadcrump
+ *
+ * @param $vars
+ */
+function address_book_preprocess_page(&$vars)
+{
+
+    if(strpos(request_uri(), 'address-book') !== FALSE){
+        $breadcrumb[] = l('Home', '<front>');
+//dsm(base_path());
+    $breadcrumb[] = l('Address-book', 'address-book');
+        $parts = Explode('/', request_uri());
+        $id = $parts[count($parts) - 1];
+        if($id!='address-book'){
+            $path = isset($_GET['q']) ? $_GET['q'] : '<front>';
+            $link = url($path, array('absolute' => TRUE));
+        $breadcrumb[] = l($id,$link);}
+    drupal_set_breadcrumb($breadcrumb);}
+
+}

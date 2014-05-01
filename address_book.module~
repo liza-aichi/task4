@@ -1,0 +1,410 @@
+<?php
+
+/**
+ * @file
+ * This file provides basic hooks imlementations.
+ */
+
+/**
+ * Implements hook_menu().
+ * 
+ * @return array
+ */
+
+function address_book_menu() {
+return array(
+
+
+'address-book/%/contact' => array(
+      'title' => 'First edu sample page',
+      'title callback' => 'function_title_callback',
+      'title arguments' => array(1),
+'type' => MENU_NORMAL_ITEM,
+      'page callback' => 'contact_page',
+      'access callback' => 'user_access',
+      'access arguments' => array('visit address book page'),
+      'page arguments' => array(1),
+
+    ),
+
+     'address-book' => array(
+     'title' => 'Address book',
+     'page callback' => 'address_book_list_form_page',
+     'access callback' => 'user_access',
+     'access arguments' => array('visit address book page'),
+     'type' => MENU_NORMAL_ITEM,
+     'menu_name' => 'main-menu',
+     'weight' => 20
+   
+  ),
+
+    'address-book/list' => array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10
+  ),
+    'address-book/%/contact/add' => array(
+    'title' => 'Add',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'address_book_form_page',
+     'access callback' => 'user_access',
+     'access arguments' => array('visit address book page'),
+    'weight' => -10
+  ),
+    'address-book/%/contact/list' => array(
+    'title' => 'List',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'address_book_list_form_page',
+    'access callback' => 'user_access',
+    'access arguments' => array('visit address book page'),
+    'weight' => -10
+  ),
+    'address-book/add' => array(
+    'title' => 'Add',
+    'type' => MENU_LOCAL_TASK,
+'page callback' => 'address_book_form_page',
+    'access callback' => 'user_access',
+   'access arguments' => array('visit address book page'),
+  
+  ),
+  'address-book/delete'=>array(
+    
+      'title' => t('Confirm'),
+    'page callback' => 'deleteform',
+        'type' => MENU_CALLBACK,
+    
+      'access callback' => 'user_access',
+    'access arguments' => array('visit address book page'),
+      
+     )
+);
+
+}
+/**
+ *  contact_page.
+ * 
+ * 
+ */
+function contact_page($arg = "") {
+    $result = db_select('contact', 'c');
+    $result->join('file_managed', 'f', 'f.fid = c.img_id');
+    $result->join('taxonomy_term_data', 't', 't.tid = c.category_id');
+    $result->fields('c', array('contact_id','email', 'phone','birthday','notes','category_id'));
+    $result->fields('f', array('fid', 'uri'));
+    $result->fields('t', array('tid', 'name'));
+
+    $result->condition('contact_id', $arg,'=');
+    $result_rows = $result->execute()->fetchAll();
+   
+   if(count($result_rows)==0){
+      $result = db_select('contact', 'c');
+      $result->join('taxonomy_term_data', 't', 't.tid = c.category_id');
+      $result->fields('c', array('contact_id','email', 'phone','birthday','notes','category_id'));
+      $result->fields('t', array('tid', 'name'));
+      $result->condition('contact_id', $arg,'=');
+      $result_rows = $result->execute()->fetchAll();
+} else $ar['Photo']=$result_rows[0]->uri;
+ 
+
+     $ar['Note']=$result_rows[0]->notes;
+     $ar['Category']=$result_rows[0]->name;
+     if(strlen($result_rows[0]->email)>0)$ar['Email']=$result_rows[0]->email;
+     $ar['Phone']=$result_rows[0]->phone;
+     $date=new DateTime($result_rows[0]->birthday);
+     $res = $date->format('d/m/Y');
+     $ar['Birthday']=$res;
+
+
+     $output = array(
+    '#theme' => 'contactpage',
+    '#title' => t('ContactPage'),
+    '#items' => $ar,
+     );
+ return $output;
+}
+/**
+ * Implements hook_theme).
+ * 
+ * @return array
+ */
+function address_book_theme() {
+  return array(
+      'contactpage' => array(
+      'variables' => array(
+      'title' => array(),
+      'items' => array(),
+      ),
+      'path' => drupal_get_path('module', 'address_book') . '/templates',
+
+      'template' => 'contactpage',
+    ),
+   
+  );
+}
+/**
+ * Implements hook_permission().
+ * 
+ * @return array
+ */
+function address_book_permission() {
+    return array(
+    'visit address book page' => array(
+     'title' => t('Allow user to visit address book page'),
+     'description' => t('Address book page is created by Adress book module.'),
+    ),
+  );
+}
+/**
+ * title_calback.
+ * 
+ * @return title
+ */
+function function_title_callback($arg) {
+ 	$result = db_select('contact', 'c');
+ 	 $result->fields('c', array('contact_id', 'first_name','last_name'));
+   	$result->condition('contact_id', $arg,'=');
+  	$result_rows = $result->execute()->fetchAll();
+	if(isset($result_rows[0]))$title=$result_rows[0]->first_name.' ';
+	if($result_rows[0]->last_name!=null)$title.=$result_rows[0]->last_name;
+  return $title;
+}
+
+
+function address_book_form_page() {
+  return drupal_get_form('address_book_f_form');
+}
+function deleteform() {
+  return drupal_get_form('delete_confirm');
+}
+function address_book_list_form_page() {
+  return drupal_get_form('list_form');
+}
+/**
+ * contacts list form
+ * 
+ */
+function list_form($form, &$form_state)
+{
+     global $user;
+     $header = array(
+    
+     t('Name'),
+     t('Category'),
+     t('Email'),
+     t('Phone'),
+     t('Birthday'),
+  t(''),
+  );
+    $rows = array();
+    $result = db_select('contact', 'c');
+    $result->join('taxonomy_term_data', 't', 't.tid = c.category_id');
+    $result->fields('t', array('tid', 'name'));
+    $result->fields('c', array('contact_id','user_id', 'first_name','last_name','email' ,'phone','birthday','category_id'));
+    $result->condition('user_id', $user->uid,'=');
+    $result->range(0, 10);
+  
+    $result_rows = $result->execute()->fetchAll();
+    foreach ($result_rows as $row) {
+    $rows[] = array(
+     '<a href="/address-book/'.$row->contact_id.'/contact">'.$row->first_name.' '.$row->last_name.'</a>',
+     $row->name,
+     $row->email,
+     $row->phone,
+     $date=(new DateTime($row->birthday))->format('d/m/Y'),
+     '<a href="/address-book/delete"> Delete </a>',
+    );
+  }
+ // $form['#multistep'] = TRUE;
+ // $form['#action'] = url('address-book/'.);
+$form_id = 'list_form';
+     $form['values'] = array(
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+  );
+return $form;}
+
+function delete_confirm() {
+  // Get the post values (what user entered)
+ // $edit = $_POST;
+  $form = array();
+ // $form['go'] = array(
+   // '#type' => 'checkbox',
+   // '#title' => t('Go'),
+   // '#value' => $edit['go'] // Include the $_POST form values
+  //);
+  // Build the confirmation form
+  $question = "Confirm deleting this contatcs?";
+  $path = 'address-book/list_form';
+  $description = 'This action cannot be easily undone.';
+  $yes = 'Delete';
+  $no = 'Cancel';
+  $name = 'confirm';
+  // Display form confirmation
+  $form = confirm_form($form, $question, $path, $description, $yes, $no, $name);
+  return $form;
+}
+function delete_confirm_submit($form_id, &$form) {
+  drupal_set_message(t('...message'));
+  // Your form processing code HERE
+ drupal_goto('address-book');
+  
+ // return  drupal_get_form('list_form');
+}
+
+
+/**
+ * add_contact_form
+ * 
+ */
+function address_book_f_form($form, &$form_state) {
+
+
+      $form['photo_image_fid'] = array(
+     '#title' => t('Photo:'),
+     '#type' => 'managed_file',
+     '#description' => t('The uploaded image will be displayed on this page using the image style choosen below.'),
+     '#default_value' => variable_get('photo_image_fid', ''),
+     '#upload_location' => 'public://addressbook_files',
+     '#upload_validators' => array(
+    'file_validate_extensions' => array('gif png jpg jpeg'),
+    'file_validate_size' => array(1 * 300* 300),
+  ),
+ 
+
+);
+     $form['first_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('First name:')
+
+  );
+    $form['last_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last name:')
+
+  );
+    $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email:')
+
+  );
+    $form['phone'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Phone:')
+
+  );
+   $form['birthday']  = array(
+   '#type' => 'date', 
+   '#title' => 'Birthday:', 
+
+);
+
+   $vocabulary = taxonomy_vocabulary_machine_name_load('contact_category');
+   $terms = taxonomy_get_tree($vocabulary->vid);
+   $category = array();
+   foreach($terms as $term) {
+    $category[$term->name] = $term->name;
+}
+
+
+   $form['category'] = array(
+       '#type' => 'select',
+       '#title' => t('Category'),
+       '#name'=>'category',
+      '#options' => $category
+      
+   );
+
+   $form['Note'] = array(
+      '#title' => t('Notes:'),
+      '#type' => 'textarea',
+
+);
+
+   $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Create'),
+  );
+
+return $form;
+  }
+
+/**
+ * form_alter
+ * 
+ */
+function address_book_form_alter(&$form, &$form_state, $form_id) {
+ 
+$form['submit']['#validate'][] = 'address_book_validate';
+ 
+}
+/**
+ * validation
+ * 
+ */
+function address_book_validate(&$form, &$form_state) {
+  	if (strlen($form_state['values']['first_name'])==0)form_set_error('first_name', t('Please, enter first name'));
+	  if (strlen($form_state['values']['last_name'])==0) {
+   	 form_set_error('last_name', t('Please, enter the last name'));
+  }
+}
+
+
+/**
+ * add_form_submit.
+ * 
+ */
+function address_book_f_form_submit(&$form, &$form_state) {
+ 
+global $user;
+drupal_set_message(
+    t(
+        'Contact @first_name @last_name was added',array(
+        '@first_name' => $form_state['values']['first_name'],
+	'@last_name' => $form_state['values']['last_name']
+      ))
+   );
+$file = file_load($form_state['values']['photo_image_fid']);$notempty=($file!=NULL);
+$fileid=NULL;
+ 	if($notempty){
+ 	$file->status = FILE_STATUS_PERMANENT;
+ 	file_save($file);$fileid=$file->fid;
+}
+
+
+	$date_arr = $form_state['values']['birthday'];
+	
+$date = new DateObject($date_arr);
+
+
+	$category=$form_state['values']['category'];
+	$result = db_select('taxonomy_term_data', 'addr')
+        ->fields('addr',array('tid','name'))
+        ->condition('name', $category,'=')
+        ->execute()
+        ->fetchAssoc();
+	$tid=$result['tid'];
+
+
+
+
+	$myfields=array(
+        'first_name' => $form_state['values']['first_name'],
+        'last_name' => $form_state['values']['last_name'],
+	'email' => $form_state['values']['email'],
+	'phone' => $form_state['values']['phone'],
+	'notes' => $form_state['values']['Note'],
+	'birthday' => date_format($date, DATE_FORMAT_DATETIME),
+	'category_id' => $tid,
+	'user_id' => $user->uid);
+	if($notempty)$myfields['img_id']=$fileid;
+        $id=db_insert('contact')
+    	->fields($myfields)
+    ->execute();
+  
+if($notempty)file_usage_add($file, 'address_book', 'contact', $id);  
+
+  
+}
+
+
