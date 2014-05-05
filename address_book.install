@@ -52,6 +52,17 @@ taxonomy_term_save($wr);
     'isid' => $style['isid'],
   );
   image_effect_save($effect);
+    $preview_style = image_style_save(array('name' => 'contact_preview_img'));
+    $peffect = array(
+        'name' => 'image_scale',
+        'data' => array(
+            'width' => 45,
+            'height' => 45,
+            'upscale' => TRUE,
+        ),
+        'isid' => $style['isid'],
+    );
+    image_effect_save($peffect);
 
 }
 
